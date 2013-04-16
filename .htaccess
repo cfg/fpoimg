@@ -1,4 +1,7 @@
 RewriteEngine On
+
+RewriteBase /
+
 RewriteRule ^([\d].*) code.php?x=$1
 
 #Standard Ad Sizes http://www.iab.net/iab_products_and_industry_services/1421/1443/1452

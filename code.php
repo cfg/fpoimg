@@ -48,8 +48,8 @@ $foreground->set_hex($fg_color);
 
 //Determine the file format. This can be anywhere in the URL.
 $file_format = 'gif';
-preg_match_all('/(png|jpg|jpeg)/', $x, $result);
-if ($result[0][0]) {
+$have_file_format = preg_match_all('/(png|jpg|jpeg)/', $x, $result);
+if( $have_file_format && $result[0][0] ) {
 	$file_format = $result[0][0];
 }
 
@@ -115,8 +115,9 @@ $fg_color = imageColorAllocate($img, $foreground->get_rgb('r'), $foreground->get
 
 if ($_GET['text']) {
 	$_GET['text'] = preg_replace("#(0x[0-9A-F]{2})#e", "chr(hexdec('\\1'))", $_GET['text']); 
-	$lines = substr_count($_GET['text'], '|');
+	$lines = substr_count($_GET['text'], '|') + 1;
 	$text = preg_replace('/\|/i', "\n", $_GET['text']);
+	//$text .= " ($lines)";
 }
 else {
 	$lines = 1;
@@ -126,7 +127,18 @@ else {
 //Ric Ewing: I modified this to behave better with long or narrow images and condensed the resize code to a single line. 
 //$fontsize = max(min($width/strlen($text), $height/strlen($text)),5); //scale the text size based on the smaller of width/8 or hieght/2 with a minimum size of 5.
 
-$fontsize = max(min($width/strlen($text)*1.15, $height*0.5) ,5);
+if( $lines > 1 ) {
+	$text_length = 1;
+	$all_text = explode( "\n", $text );
+	foreach( $all_text as $line ) {
+		$text_length = max( $text_length, strlen( $line ) );
+	}
+} else {
+	$text_length = strlen( $text );
+}
+
+//$fontsize = max(min($width/$text_length*1.15, $height*0.5) ,5);
+$fontsize = 14;
 
 $textBox = imagettfbbox_t($fontsize, $text_angle, $font, $text); //Pass these variable to a function that calculates the position of the bounding box.
 
@@ -135,12 +147,32 @@ $textWidth = ceil( ($textBox[4] - $textBox[1]) * 1.07 ); //Calculates the width 
 $textHeight = ceil( (abs($textBox[7])+abs($textBox[1])) * 1 ); //Calculates the height of the text box by adding the absolute value of the Upper Left "Y" position with the Lower Left "Y" position.
 
 $textX = ceil( ($width - $textWidth)/2 ); //Determines where to set the X position of the text box so it is centered.
-$textY = ceil( ($height - $textHeight)/2 + $textHeight ); //Determines where to set the Y position of the text box so it is centered.
-
+$textY = ceil( ($height - $textHeight)/2 + $fontsize ); //Determines where to set the Y position of the text box so it is centered.
+//$text .= " ($textWidth × $textHeight)";
 imageFilledRectangle($img, 0, 0, $width, $height, $bg_color); //Creates the rectangle with the specified background color. http://us2.php.net/manual/en/function.imagefilledrectangle.php
 
 imagettftext($img, $fontsize, $text_angle, $textX, $textY, $fg_color, $font, $text);	 //Create and positions the text http://us2.php.net/manual/en/function.imagettftext.php
 
+// draw the inner dashed box
+$style = array(
+	$fg_color, 
+	$fg_color, 
+	$fg_color, 
+	$fg_color, 
+	IMG_COLOR_TRANSPARENT, 
+	IMG_COLOR_TRANSPARENT, 
+	IMG_COLOR_TRANSPARENT, 
+	IMG_COLOR_TRANSPARENT
+);
+imagesetstyle($img, $style);
+$line_width = 4;
+imagesetthickness( $img, $line_width );
+
+// Draw the dashed line
+imageline($img, 0, 0, $width, 0, IMG_COLOR_STYLED); // top
+imageline($img, $width, 0, $width, $height, IMG_COLOR_STYLED); // right
+imageline($img, 0, 0, 0, $height, IMG_COLOR_STYLED); // left
+imageline($img, 0, $height, $width, $height, IMG_COLOR_STYLED); // bottom
 
 $offset = 60 * 60 * 24 * 14; //14 Days
 $ExpStr = "Expires: " . gmdate("D, d M Y H:i:s", time() + $offset) . " GMT";
